@@ -1,0 +1,11 @@
+# Gradle cache directory
+.gradle/
+
+# JetBranins IDE
+.idea/
+
+# Build Folder
+temp/
+
+local.properties
+*.unitypackage
