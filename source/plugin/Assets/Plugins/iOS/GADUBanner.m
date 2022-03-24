@@ -271,4 +271,9 @@
   }
 }
 
+- (void)customUpdatePosition:(CGFloat)width
+                    position:(CGPoint)position {
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ Not implemented.");
+}
+
 @end

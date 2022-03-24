@@ -547,4 +547,18 @@ public class Banner {
     }
     return result;
   }
+
+  // ======================================================
+  //  Customize
+  // ======================================================
+
+  public void customUpdatePosition(final float width, final float centerX, final float centerY) {
+    mUnityPlayerActivity.runOnUiThread(
+        new Runnable() {
+          @Override
+          public void run() {
+            Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ Not implemented.");
+          }
+        });
+  }
 }
