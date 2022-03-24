@@ -303,7 +303,41 @@ namespace GoogleMobileAds.Unity
         // Update the position of the banner view using custom position and width.
         public void CustomUpdatePosition(float width, float x, float y)
         {
-            Debug.Log("CustomUpdatePosition() @ Not implemented.");
+//            Debug.Log("CustomUpdatePosition() @ width: " + width + ", x: " + x + ", y: " + y);
+
+            if (dummyAd != null)
+            {
+                UpdateCanvasSettings(dummyAd);
+
+                var rect = getRectTransform(dummyAd);
+                var sizeDelta = rect.sizeDelta;
+                var scale = width / sizeDelta.x;
+
+                rect.anchoredPosition = new Vector2(x, y);
+                rect.sizeDelta = new Vector2(sizeDelta.x * scale, sizeDelta.y * scale);
+
+//                Debug.Log("CustomUpdatePosition() @ sizeDelta: " + sizeDelta + " => " + rect.sizeDelta);
+//                Debug.Log("CustomUpdatePosition() @ anchoredPosition: " + rect.anchoredPosition);
+            }
+            else
+            {
+                Debug.Log("No existing banner in game");
+            }
+        }
+
+        private static void UpdateCanvasSettings(GameObject obj)
+        {
+//            Debug.Log("UpdateCanvasSettings()");
+
+            var canvas = obj.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = Camera.main;
+            canvas.sortingLayerName = "AD";
+            canvas.sortingOrder = 999;
+
+            var canvasScaler = obj.GetComponent<CanvasScaler>();
+            canvasScaler.referenceResolution = new Vector2(640, 1120);
+            canvasScaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         }
     }
 }
