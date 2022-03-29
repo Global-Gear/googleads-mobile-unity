@@ -98,7 +98,7 @@ task exportPackage() {
                  "-logFile", "temp/unity.log",
                  "-importPackage", "${jarresolver_package}",
                  "-exportPackage",
-                 "Assets/GoogleMobileAds",
+                 "Assets/GoogleMobileAdsCustom",
                  "Assets/Plugins",
                  "Assets/ExternalDependencyManager",
                  "${exportPath}",
