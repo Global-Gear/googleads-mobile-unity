@@ -239,5 +239,10 @@ namespace GoogleMobileAds.Common
             Debug.Log("Dummy " + MethodBase.GetCurrentMethod().Name);
             onAdInspectorClosed(null);
         }
+
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            Debug.Log("Dummy " + MethodBase.GetCurrentMethod().Name);
+        }
     }
 }
