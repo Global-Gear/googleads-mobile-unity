@@ -283,5 +283,10 @@ namespace GoogleMobileAds.Unity
             AdBehaviour.DestroyAd(dummyAd);
             prefabAd = null;
         }
+
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            Debug.Log("Dummy " + MethodBase.GetCurrentMethod().Name);
+        }
     }
 }
