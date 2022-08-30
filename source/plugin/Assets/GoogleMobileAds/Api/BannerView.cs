@@ -154,5 +154,11 @@ namespace GoogleMobileAds.Api
             return new ResponseInfo(this.client.GetResponseInfoClient());
 
         }
+
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            client.CustomUpdatePosition(width, x, y);
+        }
     }
 }

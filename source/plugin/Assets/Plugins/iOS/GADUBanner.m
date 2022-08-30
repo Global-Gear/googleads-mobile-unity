@@ -271,4 +271,23 @@
   }
 }
 
+- (void)customUpdatePosition:(CGFloat)width
+                    position:(CGPoint)position {
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ Before size. x: %f, y: %f, width: %f, height: %f",
+    self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
+
+  self.bannerView.transform = CGAffineTransformIdentity;
+
+  CGFloat screenScale = UIScreen.mainScreen.scale;
+  CGFloat x = (position.x / screenScale) - (300 / 2);
+  CGFloat y = (position.y / screenScale) - (250 / 2);
+  CGFloat scale = (width / screenScale) / 300;
+
+  self.bannerView.frame = CGRectMake(x, y, 300, 250);
+  self.bannerView.transform = CGAffineTransformMakeScale(scale, scale);
+
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ After size. x: %f, y: %f, width: %f, height: %f",
+    self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
+}
+
 @end
