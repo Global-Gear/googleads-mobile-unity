@@ -174,7 +174,7 @@ namespace GoogleMobileAds.Android
             string orientationFieldName;
             switch (orientation)
             {
-                case ScreenOrientation.Landscape:
+                case ScreenOrientation.LandscapeLeft:
                 case ScreenOrientation.LandscapeRight:
                     orientationFieldName = "APP_OPEN_AD_ORIENTATION_LANDSCAPE";
                     break;
