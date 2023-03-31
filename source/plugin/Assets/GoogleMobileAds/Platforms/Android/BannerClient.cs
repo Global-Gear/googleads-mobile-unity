@@ -192,5 +192,13 @@ namespace GoogleMobileAds.Android
         }
 
         #endregion
+
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            this.bannerView.Call(
+                "customUpdatePosition",
+                new object[3] { width, x, y });
+        }
     }
 }
