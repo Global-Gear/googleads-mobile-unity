@@ -142,6 +142,11 @@ public class Banner {
   }
 
   private void createAdView(final String publisherId, final AdSize adSize) {
+    // MRec のサイズを変更すると右下が途切れる症状への対策としてダミー View を下敷きにして描画範囲を調整
+    if (adSize.equals(AdSize.MEDIUM_RECTANGLE)) {
+      createMRecDummyView();
+    }
+
     mAdView = new AdView(mUnityPlayerActivity);
     // Setting the background color works around an issue where the first ad isn't visible.
     mAdView.setBackgroundColor(Color.TRANSPARENT);
@@ -331,6 +336,7 @@ public class Banner {
           @Override
           public void run() {
             Log.d(PluginUtils.LOGTAG, "Calling show() on Android");
+            visibleMRecDummyView(); // Customize
             mHidden = false;
             mAdView.setVisibility(View.VISIBLE);
             updatePosition();
@@ -346,6 +352,7 @@ public class Banner {
           @Override
           public void run() {
             Log.d(PluginUtils.LOGTAG, "Calling hide() on Android");
+            invisibleMRecDummyView(); // Customize
             mHidden = true;
             mAdView.setVisibility(View.GONE);
             mAdView.pause();
@@ -365,6 +372,14 @@ public class Banner {
               ViewParent parentView = mAdView.getParent();
               if (parentView instanceof ViewGroup) {
                 ((ViewGroup) parentView).removeView(mAdView);
+              }
+            }
+
+            // Customize
+            if (sMrecDummyView != null) {
+              ViewParent mrecParentView = sMrecDummyView.getParent();
+              if (mrecParentView instanceof ViewGroup) {
+                ((ViewGroup) mrecParentView).removeView(sMrecDummyView);
               }
             }
           }
@@ -578,5 +593,65 @@ public class Banner {
                       exception.getLocalizedMessage()));
     }
     return result;
+  }
+
+  // ======================================================
+  //  Customize
+  // ======================================================
+
+  private View sMrecDummyView;
+
+  public void customUpdatePosition(final float width, final float centerX, final float centerY) {
+    mUnityPlayerActivity.runOnUiThread(
+        new Runnable() {
+          @Override
+          public void run() {
+            Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ width: " + width + ", centerX: " + centerX + ", centerY: " + centerY);
+            float defaultWidth = mAdView.getAdSize().getWidthInPixels(mUnityPlayerActivity);
+            float defaultHeight = mAdView.getAdSize().getHeightInPixels(mUnityPlayerActivity);
+            float scale = width / defaultWidth;
+
+            mAdView.setScaleX(scale);
+            mAdView.setScaleY(scale);
+            mAdView.setX(centerX - (defaultWidth / 2));
+            mAdView.setY(centerY - (defaultHeight / 2));
+
+            if (sMrecDummyView != null) {
+              sMrecDummyView.setLayoutParams(new FrameLayout.LayoutParams(
+                  (int)(defaultWidth * scale),
+                  (int)(defaultHeight * scale))
+              );
+              sMrecDummyView.setX(centerX - ((defaultWidth * scale) / 2));
+              sMrecDummyView.setY(centerY - ((defaultHeight * scale) / 2));
+              Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ adView X: " + mAdView.getX() + ", Y: " + mAdView.getY() + ", Width: " + mAdView.getWidth() + ", Height: " + mAdView.getHeight() + ", Scale: " + mAdView.getScaleX());
+              Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ dummyView X: " + sMrecDummyView.getX() + ", Y: " + sMrecDummyView.getY() + ", Width: " + sMrecDummyView.getWidth() + ", Height: " + sMrecDummyView.getHeight());
+            }
+          }
+        });
+  }
+
+  private void createMRecDummyView() {
+    Log.d(PluginUtils.LOGTAG, "Calling createMRecDummyView() on Android");
+    sMrecDummyView = new View(mUnityPlayerActivity);
+    sMrecDummyView.setVisibility(View.INVISIBLE);
+    sMrecDummyView.setBackgroundColor(0x01000000);
+    sMrecDummyView.setClickable(false);
+    mUnityPlayerActivity.addContentView(sMrecDummyView, new FrameLayout.LayoutParams(-1, -1));
+  }
+
+  private void visibleMRecDummyView() {
+    if (sMrecDummyView == null) {
+        return;
+    }
+    Log.d(PluginUtils.LOGTAG, "Calling visibleMRecDummyView() on Android");
+    sMrecDummyView.setVisibility(View.VISIBLE);
+  }
+
+  private void invisibleMRecDummyView() {
+    if (sMrecDummyView == null) {
+        return;
+    }
+    Log.d(PluginUtils.LOGTAG, "Calling invisibleMRecDummyView() on Android");
+    sMrecDummyView.setVisibility(View.INVISIBLE);
   }
 }

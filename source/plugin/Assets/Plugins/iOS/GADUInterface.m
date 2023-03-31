@@ -1069,3 +1069,11 @@ void GADURelease(GADUTypeRef ref) {
     [cache removeObjectForKey:[(__bridge NSObject *)ref gadu_referenceKey]];
   }
 }
+
+#pragma mark - Custom methods
+
+void GADUCustomUpdatePosition(GADUTypeBannerRef banner, float width, float x, float y) {
+  GADUBanner *internalBanner = (__bridge GADUBanner *)banner;
+  [internalBanner customUpdatePosition:width
+                              position:CGPointMake(x, y)];
+}
