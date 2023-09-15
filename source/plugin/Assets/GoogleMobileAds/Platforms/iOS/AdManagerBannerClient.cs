@@ -267,6 +267,11 @@ namespace GoogleMobileAds.iOS
             this.Dispose();
         }
 
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            Externs.GADUCustomUpdatePosition(this.BannerViewPtr, width, x, y);
+        }
 #endregion
 
 #region Banner callback methods
