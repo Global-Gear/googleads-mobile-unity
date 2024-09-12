@@ -50,8 +50,8 @@ task clearAar(type: Delete) {
 task makeAar(type: Copy) {
     from('build/outputs/aar/')
     into('build/libs/')
-    include('app.aar')
-    rename('app.aar', 'googlemobileads-unity.aar')
+    include('app-release.aar')
+    rename('app-release.aar', 'googlemobileads-unity.aar')
 }
 
 makeAar.dependsOn(clearAar, build)
