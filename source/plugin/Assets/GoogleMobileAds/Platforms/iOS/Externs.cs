@@ -394,6 +394,9 @@ namespace GoogleMobileAds.iOS
         [DllImport("__Internal")]
         internal static extern string GADUGetAdErrorDescription(IntPtr error);
 
+        [DllImport("__Internal")]
+        internal static extern void GADUCustomUpdatePosition(IntPtr bannerView, float width, float x, float y);
+
         #endregion
 
         #region

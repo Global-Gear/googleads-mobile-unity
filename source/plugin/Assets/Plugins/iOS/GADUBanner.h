@@ -129,4 +129,8 @@
 /// Set the GADBannerView's position on screen using a custom position.
 - (void)setCustomAdPosition:(CGPoint)customPosition;
 
+/// Update the GADBannerView's position on screen using a custom position and width.
+- (void)customUpdatePosition:(CGFloat)width
+                    position:(CGPoint)position;
+
 @end
