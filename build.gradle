@@ -39,7 +39,7 @@ project.ext {
 
 // Delete existing android plugin aar file.
 task clearAar(type: Delete) {
-    delete 'source/android-library/app/build/libs/googlemobileads-unity.aar'
+    delete "${pluginBuildDir}/Assets/Plugins/Android/googlemobileads-unity.aar"
 }
 
 // Build jar from android plugin source files using existing Gradle build file.
