@@ -75,5 +75,7 @@ namespace GoogleMobileAds.Common
         IResponseInfoClient GetResponseInfoClient();
 
 
+        // Update the position of the banner view using custom position and width.
+        void CustomUpdatePosition(float width, float x, float y);
     }
 }
