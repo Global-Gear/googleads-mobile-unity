@@ -414,11 +414,11 @@ namespace GoogleMobileAds.Unity
         {
 //            Debug.Log("CustomUpdatePosition() @ width: " + width + ", x: " + x + ", y: " + y);
 
-            if (dummyAd != null)
+            if (_gameObject != null)
             {
-                UpdateCanvasSettings(dummyAd);
+                UpdateCanvasSettings(_gameObject);
 
-                var rect = getRectTransform(dummyAd);
+                var rect = GetRectTransform();
                 var sizeDelta = rect.sizeDelta;
                 var scale = width / sizeDelta.x;
 
