@@ -34,6 +34,9 @@ project.ext {
     exportPath = file('GoogleMobileAds.unitypackage').absolutePath
 
     tempPath = file('temp').absolutePath
+	if (file('temp').exists()) {
+		delete file('temp')
+    }
     resolverDir = file("${tempPath}/jarresolver").absolutePath
 }
 
