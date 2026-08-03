@@ -19,6 +19,7 @@ using GoogleMobileAds.Common;
 
 using UnityEngine;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 namespace GoogleMobileAds.Unity
 {
@@ -116,9 +117,10 @@ namespace GoogleMobileAds.Unity
                 return false;
             }
             _gameObject = GameObject.Instantiate(_prefab);
+            Object.DontDestroyOnLoad(_gameObject);
 
             // Setting the maximum sortingOrder ensures highest priority for rendering the ad.
-            Canvas canvas = _prefab.GetComponent<Canvas>();
+            Canvas canvas = _gameObject.GetComponent<Canvas>();
             if (canvas != null)
             {
                 // sortingOrder is a 16 bit int so the maximum value is 32767.
