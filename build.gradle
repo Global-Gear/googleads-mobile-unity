@@ -37,25 +37,10 @@ project.ext {
     resolverDir = file("${tempPath}/jarresolver").absolutePath
 }
 
-// Delete existing android plugin aar file.
-task clearAar(type: Delete) {
-    delete 'source/android-library/app/build/libs/googlemobileads-unity.aar'
-}
-
-// Build jar from android plugin source files using existing Gradle build file.
-task buildAndroidPluginAar(type: GradleBuild) {
-    buildFile = 'source/android-library/app/build.gradle'
-    tasks = ['makeAar']
-}
-
-// Move android plugin jar to temporary build directory.
-task copyAndroidLibraryAar(type: Copy) {
-    from("source/android-library/app/build/libs")
-    into("${pluginBuildDir}/Assets/Plugins/Android")
-    include('googlemobileads-unity.aar')
-}
-
-copyAndroidLibraryAar.dependsOn(clearAar, buildAndroidPluginAar)
+// NOTE: 10.x 以降は Java ソースが GoogleMobileAdsPlugin.androidlib として
+// unitypackage に同梱され、アプリ側の Gradle ビルドでコンパイルされるため、
+// aar の事前ビルド (clearAar / buildAndroidPluginAar / copyAndroidLibraryAar) は廃止した。
+// (上流の build.gradle は存在しない source/android-library/app を参照したままになっている)
 
 task downloadResolver() {
     description = "Download the Play Services Resolver"
@@ -116,6 +101,5 @@ task clearTempBuildFolder(type:Delete) {
   delete {"${tempPath}"}
 }
 
-exportPackage.dependsOn(createTempBuildFolder, copyAndroidLibraryAar,
-                        downloadResolver)
+exportPackage.dependsOn(createTempBuildFolder, downloadResolver)
 // exportPackage.finalizedBy(clearTempBuildFolder)
