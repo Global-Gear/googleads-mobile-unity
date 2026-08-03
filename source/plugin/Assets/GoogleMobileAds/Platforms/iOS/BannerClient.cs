@@ -19,6 +19,8 @@ using System.Runtime.InteropServices;
 
 using GoogleMobileAds.Api;
 using GoogleMobileAds.Common;
+using UnityEngine;
+using UnityEngine.UI;
 
 namespace GoogleMobileAds.iOS
 {
@@ -273,6 +275,161 @@ namespace GoogleMobileAds.iOS
         ~BannerClient()
         {
             this.Dispose();
+        }
+
+#endregion
+
+#region MREC用カスタム関数群
+
+        public void CreateBannerView(string adUnitId, RectTransform target)
+        {
+            this.bannerClientPtr = (IntPtr)GCHandle.Alloc(this);
+
+            this.BannerViewPtr = Externs.GADUCreateBannerView(
+                this.bannerClientPtr, adUnitId, AdSize.MediumRectangle.Width,
+                AdSize.MediumRectangle.Height, (int)0);
+
+            Externs.GADUSetBannerCallbacks(
+                this.BannerViewPtr,
+                AdViewDidReceiveAdCallback,
+                AdViewDidFailToReceiveAdWithErrorCallback,
+                AdViewWillPresentScreenCallback,
+                AdViewDidDismissScreenCallback,
+                AdViewPaidEventCallback,
+                AdViewImpressionRecordedCallback,
+                AdViewClickRecordedCallback
+            );
+
+            CustomUpdatePosition(target);
+        }
+
+        public void CustomUpdatePosition(RectTransform target)
+        {
+            ConvertRectToViewCenter(target, out float x, out float y, out float width, out _);
+            CustomUpdatePosition(width, x, y);
+        }
+
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            Externs.GADUCustomUpdatePosition(this.BannerViewPtr, width, x, y);
+        }
+
+        /// <summary>
+        /// RectTransformをiOS UIView座標系の中心座標とサイズに変換
+        /// </summary>
+        /// <param name="rectTrans">変換したいRectTransform</param>
+        /// <param name="centerX">中心のX座標（out）</param>
+        /// <param name="centerY">中心のY座標（out）</param>
+        /// <param name="width">幅（out）</param>
+        /// <param name="height">高さ（out）</param>
+        public static void ConvertRectToViewCenter(RectTransform rectTrans, out float centerX, out float centerY, out float width, out float height)
+        {
+            if (rectTrans == null)
+            {
+                Debug.LogError("RectTransformがnullです");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvasを取得
+            Canvas canvas = rectTrans.GetComponentInParent<Canvas>();
+            if (canvas == null)
+            {
+                Debug.LogError("Canvasが見つかりません");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvas解像度とScreen解像度の比率を計算
+            float canvasWidth = Screen.width;
+            float canvasHeight = Screen.height;
+            CanvasScaler canvasScaler = canvas.GetComponent<CanvasScaler>();
+            if (canvasScaler != null && canvasScaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                canvasWidth = canvasScaler.referenceResolution.x;
+                canvasHeight = canvasScaler.referenceResolution.y;
+            }
+            // float scaleX = canvasWidth / Screen.width;
+            // float scaleY = canvasHeight / Screen.height;
+            float scaleX = 1.0f;
+            float scaleY = 1.0f;
+
+            // Safe Areaのオフセットを取得
+            Rect safeArea = Screen.safeArea;
+            float safeAreaTopOffset = Screen.height - safeArea.yMax;
+
+            // ワールド座標での四隅を取得
+            Vector3[] worldCorners = new Vector3[4];
+            rectTrans.GetWorldCorners(worldCorners);
+
+            Vector2[] screenCorners = new Vector2[4];
+
+            // Overlay Canvasの場合は直接Screen座標を使用
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                // Overlayの場合、worldCornersは既にScreen座標
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = new Vector2(worldCorners[i].x, worldCorners[i].y);
+                }
+            }
+            else
+            {
+                // Camera/World Spaceの場合はカメラを使って変換
+                Camera camera = GetCanvasCamera(canvas);
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = RectTransformUtility.WorldToScreenPoint(camera, worldCorners[i]);
+                }
+            }
+
+            // 最小・最大座標を取得
+            float minX = Mathf.Min(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float maxX = Mathf.Max(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float minY = Mathf.Min(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+            float maxY = Mathf.Max(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+
+            // サイズ
+            width = (maxX - minX);
+            height = (maxY - minY);
+
+            // Unity Screen座標での中心（左下原点）
+            float screenCenterX = (minX + maxX) / 2f;
+            float screenCenterY = (minY + maxY) / 2f;
+
+            // iOS UIView座標系に変換（左上原点、Y軸下向き）
+            centerX = screenCenterX;
+            // Safe Areaのtopオフセット分を引く
+            centerY = (Screen.height - screenCenterY);
+        }
+
+        /// <summary>
+        /// Canvasに対応するカメラを取得
+        /// </summary>
+        private static Camera GetCanvasCamera(Canvas canvas)
+        {
+            if (canvas == null)
+                return null;
+
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+            else if (canvas.worldCamera != null)
+            {
+                return canvas.worldCamera;
+            }
+            else
+            {
+                return Camera.main;
+            }
         }
 
 #endregion

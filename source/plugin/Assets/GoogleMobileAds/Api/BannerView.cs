@@ -16,6 +16,7 @@ using System;
 
 using GoogleMobileAds;
 using GoogleMobileAds.Common;
+using UnityEngine;
 
 namespace GoogleMobileAds.Api
 {
@@ -89,6 +90,17 @@ namespace GoogleMobileAds.Api
         {
             _client = MobileAds.GetClientFactory().BuildBannerClient();
             _client.CreateBannerView(adUnitId, adSize, x, y);
+
+            ConfigureBannerEvents();
+        }
+
+        /// <summary>
+        /// Creates a MREC banner view aligned to the given RectTransform. (MREC用のカスタム関数)
+        /// </summary>
+        public BannerView(string adUnitId, RectTransform target)
+        {
+            _client = MobileAds.GetClientFactory().BuildBannerClient();
+            _client.CreateBannerView(adUnitId, target);
 
             ConfigureBannerEvents();
         }
@@ -301,6 +313,14 @@ namespace GoogleMobileAds.Api
                     }
                 });
             };
+        }
+
+        /// <summary>
+        /// Updates the banner position to match the given RectTransform. (MREC用のカスタム関数)
+        /// </summary>
+        public void CustomUpdatePosition(RectTransform target)
+        {
+            _client?.CustomUpdatePosition(target);
         }
     }
 }

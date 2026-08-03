@@ -21,6 +21,11 @@
   // Keep a reference to the error objects so references to Unity-level
   // ResponseInfo object are not released until the ad object is released.
   NSError *_lastLoadError;
+
+  // 【追加】カスタム位置・スケール情報を保持するための変数
+  BOOL _isCustomScaled;      // カスタムスケールモードかどうか
+  CGFloat _storedScale;      // 保存されたスケール値
+  CGRect _storedBaseFrame;   // 保存されたTransform適用前のフレーム
 }
 
 - (id)initWithBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
@@ -208,6 +213,9 @@
     return;
   }
   self.bannerView.hidden = NO;
+
+  // 【修正】表示時に位置とスケールを再適用する
+  [self positionBannerView];
 }
 
 - (void)removeBannerView {
@@ -249,12 +257,24 @@
 - (void)setCustomAdPosition:(CGPoint)customPosition {
   _customAdPosition = customPosition;
   _adPosition = kGADAdPositionCustom;
+
+  // 【追加】通常のSetPositionが呼ばれたら、カスタムスケールモードを解除する
+  _isCustomScaled = NO;
+
   [self positionBannerView];
 }
 
 - (void)positionBannerView {
   /// Align the bannerView in the Unity view bounds.
   UIView *unityView = [GADUPluginUtil unityGLViewController].view;
+
+  // 【修正】カスタムスケールモードが有効なら、保存された設定を強制適用して終了する
+  if (_isCustomScaled) {
+    self.bannerView.transform = CGAffineTransformIdentity;
+    self.bannerView.frame = _storedBaseFrame;
+    self.bannerView.transform = CGAffineTransformMakeScale(_storedScale, _storedScale);
+    return;
+  }
 
   if (self.adPosition != kGADAdPositionCustom) {
     [GADUPluginUtil positionView:self.bannerView inParentView:unityView adPosition:self.adPosition];
@@ -319,5 +339,34 @@
   if (self.adClickedCallback) {
     self.adClickedCallback(self.bannerClient);
   }
+}
+
+- (void)customUpdatePosition:(CGFloat)width
+                    position:(CGPoint)position {
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ Before size. x: %f, y: %f, width: %f, height: %f",
+    self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
+
+  self.bannerView.transform = CGAffineTransformIdentity;
+
+  UIScreen *screen = UIScreen.mainScreen;
+  CGFloat screenScale = screen.scale;
+
+  // 拡大表示モード対策: nativeScale / scale でズーム倍率を取得
+  CGFloat zoomFactor = screen.nativeScale / screen.scale;
+
+  CGFloat x = (position.x / screenScale) / zoomFactor - (300 / 2);
+  CGFloat y = (position.y / screenScale) / zoomFactor - (250 / 2);
+  CGFloat scale = (width / screenScale) / zoomFactor / 300;
+
+  // 【重要】情報を保存し、フラグを立てる
+  _isCustomScaled = YES;
+  _storedScale = scale;
+  _storedBaseFrame = CGRectMake(x, y, 300, 250);
+
+  // 適用処理を実行 (positionBannerViewを呼ぶことで、上記で保存した変数が適用される)
+  [self positionBannerView];
+
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ After size. x: %f, y: %f, width: %f, height: %f",
+  self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
 }
 @end

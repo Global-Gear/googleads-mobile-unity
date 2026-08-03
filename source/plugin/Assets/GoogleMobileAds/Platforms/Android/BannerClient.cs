@@ -17,6 +17,7 @@ using System;
 using GoogleMobileAds.Api;
 using GoogleMobileAds.Common;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace GoogleMobileAds.Android
 {
@@ -210,6 +211,143 @@ namespace GoogleMobileAds.Android
             if (this.OnAdImpressionRecorded != null)
             {
                 this.OnAdImpressionRecorded();
+            }
+        }
+
+        #endregion
+
+        #region MREC用カスタム関数群
+        public void CreateBannerView(string adUnitId, RectTransform target)
+        {
+            this.bannerView.Call(
+                "create",
+                new object[4] { adUnitId, Utils.GetAdSizeJavaObject(AdSize.MediumRectangle), 0, 0 });
+
+            if (null != target)
+            {
+                CustomUpdatePosition(target);
+            }
+        }
+
+        public void CustomUpdatePosition(RectTransform target)
+        {
+            ConvertRectToViewCenter(target, out float x, out float y, out float width, out _);
+            CustomUpdatePosition(width, x, y);
+        }
+
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            this.bannerView.Call(
+                "customUpdatePosition",
+                new object[3] { width, x, y });
+        }
+
+        public static void ConvertRectToViewCenter(RectTransform rectTrans, out float centerX, out float centerY, out float width, out float height)
+        {
+            if (rectTrans == null)
+            {
+                Debug.LogError("RectTransformがnullです");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvasを取得
+            Canvas canvas = rectTrans.GetComponentInParent<Canvas>();
+            if (canvas == null)
+            {
+                Debug.LogError("Canvasが見つかりません");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvas解像度とScreen解像度の比率を計算
+            float canvasWidth = Screen.width;
+            float canvasHeight = Screen.height;
+            CanvasScaler canvasScaler = canvas.GetComponent<CanvasScaler>();
+            if (canvasScaler != null && canvasScaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                canvasWidth = canvasScaler.referenceResolution.x;
+                canvasHeight = canvasScaler.referenceResolution.y;
+            }
+            float scaleX = canvasWidth / Screen.width;
+            float scaleY = canvasHeight / Screen.height;
+
+            // Safe Areaのオフセットを取得
+            Rect safeArea = Screen.safeArea;
+            float safeAreaTopOffset = Screen.height - safeArea.yMax;
+
+            // ワールド座標での四隅を取得
+            Vector3[] worldCorners = new Vector3[4];
+            rectTrans.GetWorldCorners(worldCorners);
+
+            Vector2[] screenCorners = new Vector2[4];
+
+            // Overlay Canvasの場合は直接Screen座標を使用
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                // Overlayの場合、worldCornersは既にScreen座標
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = new Vector2(worldCorners[i].x, worldCorners[i].y);
+                }
+            }
+            else
+            {
+                // Camera/World Spaceの場合はカメラを使って変換
+                Camera camera = GetCanvasCamera(canvas);
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = RectTransformUtility.WorldToScreenPoint(camera, worldCorners[i]);
+                }
+            }
+
+            // 最小・最大座標を取得
+            float minX = Mathf.Min(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float maxX = Mathf.Max(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float minY = Mathf.Min(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+            float maxY = Mathf.Max(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+
+            // サイズ
+            width = (maxX - minX);
+            height = (maxY - minY);
+
+            // Unity Screen座標での中心（左下原点）
+            float screenCenterX = (minX + maxX) / 2f;
+            float screenCenterY = (minY + maxY) / 2f;
+
+            // Java View座標系に変換（左上原点、Y軸下向き
+            centerX = screenCenterX;
+            // Safe Areaのtopオフセット分を引く
+            // centerY = (Screen.height - screenCenterY - safeAreaTopOffset);
+            centerY = (Screen.height - screenCenterY);
+        }
+
+        /// <summary>
+        /// Canvasに対応するカメラを取得
+        /// </summary>
+        private static Camera GetCanvasCamera(Canvas canvas)
+        {
+            if (canvas == null)
+                return null;
+
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+            else if (canvas.worldCamera != null)
+            {
+                return canvas.worldCamera;
+            }
+            else
+            {
+                return Camera.main;
             }
         }
 

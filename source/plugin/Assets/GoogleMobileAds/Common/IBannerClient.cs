@@ -15,6 +15,7 @@
 using System;
 
 using GoogleMobileAds.Api;
+using UnityEngine;
 
 namespace GoogleMobileAds.Common
 {
@@ -40,6 +41,9 @@ namespace GoogleMobileAds.Common
 
         // Creates a banner view and adds it to the view hierarchy with a custom position.
         void CreateBannerView(string adUnitId, AdSize adSize, int x, int y);
+
+        // MREC用のカスタム関数
+        void CreateBannerView(string adUnitId, RectTransform target){}
 
         // Requests a new ad for the banner view.
         void LoadAd(AdRequest request);
@@ -76,5 +80,8 @@ namespace GoogleMobileAds.Common
 
         // A long integer provided by the AdMob UI for the configured placement.
         long PlacementId { get; set; }
+
+        // Mrec用の座標更新関数
+        void CustomUpdatePosition(RectTransform target) {}
     }
 }

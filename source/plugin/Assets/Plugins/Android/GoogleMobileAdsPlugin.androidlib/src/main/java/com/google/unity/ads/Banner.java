@@ -88,6 +88,11 @@ public class Banner {
    */
   private View.OnLayoutChangeListener mLayoutChangeListener;
 
+  private boolean mIsCustomPositioned = false; // カスタム位置が有効かどうか
+  private float mCustomWidth;
+  private float mCustomCenterX;
+  private float mCustomCenterY;
+
   protected Banner() {}
 
   /**
@@ -118,6 +123,7 @@ public class Banner {
             mVerticalOffset = 0;
             mPositionCode = positionCode;
             hidden = false;
+            mIsCustomPositioned = false;
           }
         });
   }
@@ -141,11 +147,17 @@ public class Banner {
             mHorizontalOffset = positionX;
             mVerticalOffset = positionY;
             hidden = false;
+            mIsCustomPositioned = false;
           }
         });
   }
 
   protected void createAdView(final String publisherId, final AdSize adSize) {
+    // MRec のサイズを変更すると右下が途切れる症状への対策としてダミー View を下敷きにして描画範囲を調整
+    if (adSize.equals(AdSize.MEDIUM_RECTANGLE)) {
+      createMRecDummyView();
+    }
+
     adView = new AdView(unityPlayerActivity);
     // Setting the background color works around an issue where the first ad isn't visible.
     adView.setBackgroundColor(Color.TRANSPARENT);
@@ -338,6 +350,7 @@ public class Banner {
           @Override
           public void run() {
             Log.d(PluginUtils.LOGTAG, "Calling show() on Android");
+            visibleMRecDummyView(); // Customize
             hidden = false;
             adView.setVisibility(View.VISIBLE);
             updatePosition();
@@ -353,6 +366,7 @@ public class Banner {
           @Override
           public void run() {
             Log.d(PluginUtils.LOGTAG, "Calling hide() on Android");
+            invisibleMRecDummyView(); // Customize
             hidden = true;
             adView.setVisibility(View.GONE);
             adView.pause();
@@ -535,6 +549,16 @@ public class Banner {
     final FrameLayout.LayoutParams adParams =
         new FrameLayout.LayoutParams(
             FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT);
+
+    // 【追加】カスタム位置指定モードなら、標準の配置計算（マージン等）をすべて無効化する
+    if (mIsCustomPositioned) {
+      // 左上を基準にし、マージンを0にする。
+      // これにより setX / setY で指定した座標がそのまま絶対座標として機能するようになる。
+      adParams.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+      adParams.setMargins(0, 0, 0, 0);
+      return adParams;
+    }
+
     adParams.gravity = PluginUtils.getLayoutGravityForPositionCode(mPositionCode);
 
     Insets insets = getSafeInsets();
@@ -576,6 +600,10 @@ public class Banner {
           public void run() {
             FrameLayout.LayoutParams layoutParams = getLayoutParams();
             adView.setLayoutParams(layoutParams);
+            // 【重要】カスタム位置指定モードの場合は、ここで強制的に上書き適用する
+            if (mIsCustomPositioned) {
+                applyCustomPositionInternal();
+            }
           }
         });
   }
@@ -613,5 +641,76 @@ public class Banner {
       return null;
     }
     return adView.getResponseInfo();
+  }
+
+  // ======================================================
+  //  Customize
+  // ======================================================
+
+  private View sMrecDummyView;
+
+  public void customUpdatePosition(final float width, final float centerX, final float centerY) {
+    unityPlayerActivity.runOnUiThread(
+        new Runnable() {
+          @Override
+          public void run() {
+             // 値を保存してフラグを立てる
+             mIsCustomPositioned = true;
+             mCustomWidth = width;
+             mCustomCenterX = centerX;
+             mCustomCenterY = centerY;
+
+             // 適用処理を実行
+             applyCustomPositionInternal();
+          }
+    });
+  }
+
+  public void applyCustomPositionInternal() {
+      Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ width: " + mCustomWidth + ", centerX: " + mCustomCenterX + ", centerY: " + mCustomCenterY);
+      float defaultWidth = adView.getAdSize().getWidthInPixels(unityPlayerActivity);
+      float defaultHeight = adView.getAdSize().getHeightInPixels(unityPlayerActivity);
+      float scale = mCustomWidth / defaultWidth;
+
+      adView.setScaleX(scale);
+      adView.setScaleY(scale);
+      adView.setX(mCustomCenterX - (defaultWidth / 2));
+      adView.setY(mCustomCenterY - (defaultHeight / 2));
+
+      if (sMrecDummyView != null) {
+        sMrecDummyView.setLayoutParams(new FrameLayout.LayoutParams(
+            (int)(defaultWidth * scale),
+            (int)(defaultHeight * scale))
+        );
+        sMrecDummyView.setX(mCustomCenterX - ((defaultWidth * scale) / 2));
+        sMrecDummyView.setY(mCustomCenterY - ((defaultHeight * scale) / 2));
+        Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ adView X: " + adView.getX() + ", Y: " + adView.getY() + ", Width: " + adView.getWidth() + ", Height: " + adView.getHeight() + ", Scale: " + adView.getScaleX());
+        Log.d(PluginUtils.LOGTAG, "Calling customUpdatePosition() on Android @ dummyView X: " + sMrecDummyView.getX() + ", Y: " + sMrecDummyView.getY() + ", Width: " + sMrecDummyView.getWidth() + ", Height: " + sMrecDummyView.getHeight());
+      }
+  }
+
+  private void createMRecDummyView() {
+    Log.d(PluginUtils.LOGTAG, "Calling createMRecDummyView() on Android");
+    sMrecDummyView = new View(unityPlayerActivity);
+    sMrecDummyView.setVisibility(View.INVISIBLE);
+    sMrecDummyView.setBackgroundColor(0x01000000);
+    sMrecDummyView.setClickable(false);
+    unityPlayerActivity.addContentView(sMrecDummyView, new FrameLayout.LayoutParams(-1, -1));
+  }
+
+  private void visibleMRecDummyView() {
+    if (sMrecDummyView == null) {
+      return;
+    }
+    Log.d(PluginUtils.LOGTAG, "Calling visibleMRecDummyView() on Android");
+    sMrecDummyView.setVisibility(View.VISIBLE);
+  }
+
+  private void invisibleMRecDummyView() {
+    if (sMrecDummyView == null) {
+      return;
+    }
+    Log.d(PluginUtils.LOGTAG, "Calling invisibleMRecDummyView() on Android");
+    sMrecDummyView.setVisibility(View.INVISIBLE);
   }
 }
