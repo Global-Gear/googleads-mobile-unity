@@ -99,6 +99,10 @@ task exportPackage() {
 task createTempBuildFolder(type: Copy) {
         from {"${pluginSource}"}
         into {"${pluginBuildDir}"}
+        // ドット始まりのディレクトリ (.gradle 等のビルドキャッシュ) は
+        // unitypackage に混入させない。
+        exclude '**/.*'
+        exclude '**/.*/**'
 }
 
 task clearTempBuildFolder(type:Delete) {
