@@ -388,6 +388,7 @@ public class Banner {
                 ((ViewGroup) parentView).removeView(adView);
               }
             }
+            removeMRecDummyView(); // Customize: ダミー View のリーク対策
           }
         });
 
@@ -654,6 +655,10 @@ public class Banner {
         new Runnable() {
           @Override
           public void run() {
+             if (adView == null) {
+               Log.e(PluginUtils.LOGTAG, "customUpdatePosition() called before the banner was created. Ignoring.");
+               return;
+             }
              // 値を保存してフラグを立てる
              mIsCustomPositioned = true;
              mCustomWidth = width;
@@ -691,6 +696,8 @@ public class Banner {
 
   private void createMRecDummyView() {
     Log.d(PluginUtils.LOGTAG, "Calling createMRecDummyView() on Android");
+    // 再作成時に古いダミー View が Activity に残らないように除去する
+    removeMRecDummyView();
     sMrecDummyView = new View(unityPlayerActivity);
     sMrecDummyView.setVisibility(View.INVISIBLE);
     sMrecDummyView.setBackgroundColor(0x01000000);
@@ -712,5 +719,17 @@ public class Banner {
     }
     Log.d(PluginUtils.LOGTAG, "Calling invisibleMRecDummyView() on Android");
     sMrecDummyView.setVisibility(View.INVISIBLE);
+  }
+
+  private void removeMRecDummyView() {
+    if (sMrecDummyView == null) {
+      return;
+    }
+    Log.d(PluginUtils.LOGTAG, "Calling removeMRecDummyView() on Android");
+    ViewParent parentView = sMrecDummyView.getParent();
+    if (parentView instanceof ViewGroup) {
+      ((ViewGroup) parentView).removeView(sMrecDummyView);
+    }
+    sMrecDummyView = null;
   }
 }

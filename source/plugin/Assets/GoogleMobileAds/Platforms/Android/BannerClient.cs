@@ -231,6 +231,12 @@ namespace GoogleMobileAds.Android
 
         public void CustomUpdatePosition(RectTransform target)
         {
+            // target が null のまま変換すると幅 0 → スケール 0 で不可視になるためガードする
+            if (target == null)
+            {
+                Debug.LogError("CustomUpdatePosition: target RectTransform is null. Ignoring.");
+                return;
+            }
             ConvertRectToViewCenter(target, out float x, out float y, out float width, out _);
             CustomUpdatePosition(width, x, y);
         }
