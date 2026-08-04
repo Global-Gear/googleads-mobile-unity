@@ -50,7 +50,7 @@ task downloadResolver() {
         new URL("${resolverPackageUri}").withInputStream {
             inputStream -> resolver.withOutputStream { it << inputStream }
         }
-    } else {
+    } else if (!file("${resolverDir}").exists()) {
         println 'clone ' + jarResolverRepo
         def result = exec {
             executable "${git_exe}"
@@ -62,6 +62,17 @@ task downloadResolver() {
     }
 }
 
+// EDM4U (External Dependency Manager) をビルド用プロジェクトへコピーする。
+// 上流の -importPackage 方式だと初回コンパイル時に GooglePlayServices 名前空間が
+// 存在せずコンパイルエラーで batchmode が中断するため、clone した リポジトリの
+// exploded/ (展開済みファイル) を Unity 起動前に配置する方式に変更した。
+task copyResolver(type: Copy) {
+    from "${resolverDir}/exploded"
+    into "${pluginBuildDir}"
+}
+copyResolver.dependsOn(downloadResolver)
+copyResolver.mustRunAfter('createTempBuildFolder')
+
 // Build unity package using through command line interface.
 // Create new unity project with files in temporary build directory and export files within Assets/GoogleMobileAds
 // to a unity package.
@@ -69,19 +80,12 @@ task downloadResolver() {
 task exportPackage() {
     description = "Creates and exports the Plugin unity package"
     doLast {
-        def tree = fileTree("${resolverDir}")
-        {
-            include '*-latest.unitypackage'
-        }
-        def jarresolver_package = tree.getSingleFile()
-
         exec {
             executable "${unity_exe}"
             args "-g.building",
                  "-batchmode",
                  "-projectPath", "${pluginBuildDir}",
                  "-logFile", "temp/unity.log",
-                 "-importPackage", "${jarresolver_package}",
                  "-exportPackage",
                  "Assets/GoogleMobileAds",
                  "Assets/Plugins",
@@ -101,5 +105,5 @@ task clearTempBuildFolder(type:Delete) {
   delete {"${tempPath}"}
 }
 
-exportPackage.dependsOn(createTempBuildFolder, downloadResolver)
+exportPackage.dependsOn(createTempBuildFolder, copyResolver)
 // exportPackage.finalizedBy(clearTempBuildFolder)
