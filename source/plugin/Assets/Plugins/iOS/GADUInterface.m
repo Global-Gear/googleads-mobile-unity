@@ -1348,6 +1348,86 @@ void GAMUInterstitialPreloadedAdWithAdUnitID(GADUTypeInterstitialRef interstitia
 
 #endif  // GMA_PREVIEW_FEATURES
 
+#if !GMA_PREVIEW_FEATURES
+
+// Stub implementations for the preload APIs. The C# externs for these functions are declared
+// outside the GMA_PREVIEW_FEATURES guard and are preserved by link.xml, so IL2CPP always emits
+// references to them. When building the plugin from source without GMA_PREVIEW_FEATURES the real
+// implementations above are compiled out, so these stubs are required to satisfy the linker.
+
+GADUTypePreloadConfigurationRef GADUCreatePreloadConfiguration() { return nil; }
+
+GADUTypePreloadConfigurationRef GADUCreatePreloadConfigurationV2() { return nil; }
+
+const char *GADUGetPreloadConfigurationAdUnitID(
+    GADUTypePreloadConfigurationRef preloadConfiguration) {
+  return NULL;
+}
+
+void GADUSetPreloadConfigurationAdUnitID(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                         const char *adUnitID) {}
+
+int GADUGetPreloadConfigurationAdFormat(GADUTypePreloadConfigurationRef preloadConfiguration) {
+  return 0;
+}
+
+void GADUSetPreloadConfigurationAdFormat(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                         NSInteger adFormat) {}
+
+void GADUSetPreloadConfigurationAdRequest(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                          GADUTypeRequestRef request) {}
+
+int GADUGetPreloadConfigurationBufferSize(GADUTypePreloadConfigurationRef preloadConfiguration) {
+  return 0;
+}
+
+void GADUSetPreloadConfigurationBufferSize(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                           NSUInteger bufferSize) {}
+
+const char *GADUGetPreloadConfigurationV2AdUnitID(
+    GADUTypePreloadConfigurationRef preloadConfiguration) {
+  return NULL;
+}
+
+void GADUSetPreloadConfigurationV2AdUnitID(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                           const char *adUnitID) {}
+
+void GADUSetPreloadConfigurationV2AdRequest(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                            GADUTypeRequestRef request) {}
+
+int GADUGetPreloadConfigurationV2BufferSize(GADUTypePreloadConfigurationRef preloadConfiguration) {
+  return 0;
+}
+
+void GADUSetPreloadConfigurationV2BufferSize(GADUTypePreloadConfigurationRef preloadConfiguration,
+                                             NSUInteger bufferSize) {}
+
+void GADUPreloadWithCallback(GADUTypeMobileAdsClientRef *mobileAdsClient,
+                             GADUTypePreloadConfigurationRef *configurations,
+                             NSInteger configurationsLength,
+                             GADUAdAvailableForPreloadConfigurationCallback adAvailableCallback,
+                             GADUAdsExhaustedForPreloadConfigurationCallback adsExhaustedCallback) {}
+
+BOOL GADUAppOpenIsPreloadedAdAvailable(const char *adUnitID) { return NO; }
+
+void GADUAppOpenPreloadedAdWithAdUnitID(GADUTypeAppOpenAdRef appOpenAd, const char *adUnitID) {}
+
+BOOL GADUInterstitialIsPreloadedAdAvailable(const char *adUnitID) { return NO; }
+
+void GADUInterstitialPreloadedAdWithAdUnitID(GADUTypeInterstitialRef interstitial,
+                                             const char *adUnitID) {}
+
+BOOL GADURewardedIsPreloadedAdAvailable(const char *adUnitID) { return NO; }
+
+void GADURewardedPreloadedAdWithAdUnitID(GADUTypeRewardedAdRef rewardedAd, const char *adUnitID) {}
+
+BOOL GAMUInterstitialIsPreloadedAdAvailable(const char *adUnitID) { return NO; }
+
+void GAMUInterstitialPreloadedAdWithAdUnitID(GADUTypeInterstitialRef interstitial,
+                                             const char *adUnitID) {}
+
+#endif  // !GMA_PREVIEW_FEATURES
+
 /// Shows the GADAppOpenAd.
 void GADUShowAppOpenAd(GADUTypeAppOpenAdRef appOpenAd) {
   GADUAppOpenAd *internalAppOpenAd = (__bridge GADUAppOpenAd *)appOpenAd;
