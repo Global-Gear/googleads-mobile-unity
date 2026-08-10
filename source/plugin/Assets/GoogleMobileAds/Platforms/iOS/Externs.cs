@@ -1014,6 +1014,13 @@ namespace GoogleMobileAds.iOS
         internal static extern string GADUAdapterResponseInfoDescription(IntPtr error);
 
         #endregion
+
+        #region MREC用カスタム関数
+
+        [DllImport("__Internal")]
+        internal static extern void GADUCustomUpdatePosition(IntPtr bannerView, float width, float x, float y);
+
+        #endregion
     }
 }
 #endif
