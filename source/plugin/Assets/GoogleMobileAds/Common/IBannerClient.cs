@@ -83,5 +83,8 @@ namespace GoogleMobileAds.Common
 
         // Mrec用の座標更新関数
         void CustomUpdatePosition(RectTransform target) {}
+
+        // Mrec用のサイズ＆座標更新関数
+        void CustomUpdatePosition(float width, float x, float y) {}
     }
 }

@@ -322,5 +322,13 @@ namespace GoogleMobileAds.Api
         {
             _client?.CustomUpdatePosition(target);
         }
+
+        /// <summary>
+        /// Updates the banner size and position with screen pixel values. (MREC用のカスタム関数)
+        /// </summary>
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            _client?.CustomUpdatePosition(width, x, y);
+        }
     }
 }
