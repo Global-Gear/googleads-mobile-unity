@@ -446,6 +446,83 @@ namespace GoogleMobileAds.Unity
         }
 
         /// <summary>
+        /// スクリーンピクセル指定でプレースホルダーの位置とサイズを更新する
+        /// </summary>
+        /// <remarks>
+        /// 引数の意味は Android / iOS 版と同一。x, y は左上原点・Y軸下向きのスクリーン座標
+        /// (Platforms/Android/BannerClient.cs の ConvertRectToViewCenter が出力する形式) で、
+        /// バナーの中心を指す。高さは実機と同じく MREC (300x250) を等倍スケールして求める。
+        /// </remarks>
+        /// <param name="width">バナーの幅 (スクリーンピクセル)</param>
+        /// <param name="x">バナー中心のX座標 (スクリーンピクセル、左原点)</param>
+        /// <param name="y">バナー中心のY座標 (スクリーンピクセル、上原点・下向き)</param>
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            if (_gameObject == null)
+            {
+                Debug.LogError("CustomUpdatePosition: バナーが未生成です。無視します。");
+                return;
+            }
+
+            if (width <= 0f)
+            {
+                Debug.LogError("CustomUpdatePosition: width が 0 以下です。無視します。");
+                return;
+            }
+
+            RectTransform self = GetRectTransform();
+            if (self == null)
+            {
+                Debug.LogError("プレースホルダーのRectTransformが見つかりません");
+                return;
+            }
+
+            Canvas canvas = self.GetComponentInParent<Canvas>(true);
+            if (canvas == null)
+            {
+                Debug.LogError("プレースホルダーのImageがCanvas配下にありません");
+                return;
+            }
+
+            RectTransform canvasRectTransform = canvas.GetComponent<RectTransform>();
+            Camera camera = GetCanvasCamera(canvas);
+
+            // 実機側は 300x250 のビューを等倍スケールするだけなので、高さは幅から求める
+            AdSize mrec = AdSize.MediumRectangle;
+            float height = width * mrec.Height / mrec.Width;
+
+            // 左上原点・Y軸下向き -> Unityのスクリーン座標 (左下原点・Y軸上向き)
+            Vector2 screenCenter = new Vector2(x, Screen.height - y);
+            Vector2 halfSize = new Vector2(width, height) / 2f;
+
+            // Canvasのローカル座標に変換する (CanvasScalerによる拡縮もここで吸収される)
+            Vector2 localMin;
+            Vector2 localMax;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRectTransform, screenCenter - halfSize, camera, out localMin) ||
+                !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRectTransform, screenCenter + halfSize, camera, out localMax))
+            {
+                Debug.LogError("スクリーン座標をCanvas座標に変換できませんでした");
+                return;
+            }
+
+            Vector2 localCenter = (localMin + localMax) / 2f;
+            Vector2 localSize = new Vector2(Mathf.Abs(localMax.x - localMin.x),
+                                            Mathf.Abs(localMax.y - localMin.y));
+
+            // アンカーを中央に設定
+            self.anchorMin = new Vector2(0.5f, 0.5f);
+            self.anchorMax = new Vector2(0.5f, 0.5f);
+            self.pivot = new Vector2(0.5f, 0.5f);
+
+            // 位置とサイズを設定
+            // anchoredPositionは親のpivotに依存するため、ワールド座標を経由して中心を合わせる
+            self.sizeDelta = localSize;
+            self.position = canvasRectTransform.TransformPoint(localCenter);
+        }
+
+        /// <summary>
         /// A側のImageに合わせて、B側のImageの位置とサイズを設定する
         /// </summary>
         /// <param name="sourceRectTransform">基準となるA側のRectTransform</param>
