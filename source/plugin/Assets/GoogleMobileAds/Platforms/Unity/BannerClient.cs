@@ -420,5 +420,118 @@ namespace GoogleMobileAds.Unity
                 Debug.Log("Invalid Placeholder Ad");
             }
         }
+
+        #region MREC用カスタム関数群
+
+        public void CreateBannerView(string adUnitId, RectTransform target)
+        {
+            if(CreateBannerView(AdSize.MediumRectangle, null))
+            {
+                _adUnitId = adUnitId;
+
+                if (target != null)
+                {
+                    CustomUpdatePosition(target);
+                }
+
+                _gameObject.SetActive(false);
+            }
+        }
+
+        public void CustomUpdatePosition(RectTransform target)
+        {
+            RectTransform self = GetRectTransform();
+
+            MatchImageTransform(target,self);
+        }
+
+        /// <summary>
+        /// A側のImageに合わせて、B側のImageの位置とサイズを設定する
+        /// </summary>
+        /// <param name="sourceRectTransform">基準となるA側のRectTransform</param>
+        /// <param name="targetRectTransform">合わせたいB側のRectTransform</param>
+        public static void MatchImageTransform(RectTransform sourceRectTransform, RectTransform targetRectTransform)
+        {
+            if (sourceRectTransform == null || targetRectTransform == null)
+            {
+                Debug.LogError("RectTransformがnullです");
+                return;
+            }
+
+            // B側のCanvasを取得
+            Canvas targetCanvas = targetRectTransform.GetComponentInParent<Canvas>(true);
+            if (targetCanvas == null)
+            {
+                Debug.LogError("B側のImageがCanvas配下にありません");
+                return;
+            }
+
+            // A側のワールド座標での四隅を取得
+            Vector3[] worldCorners = new Vector3[4];
+            sourceRectTransform.GetWorldCorners(worldCorners);
+
+            // A側のCanvasとカメラを取得
+            Canvas sourceCanvas = sourceRectTransform.GetComponentInParent<Canvas>();
+            Camera sourceCamera = GetCanvasCamera(sourceCanvas);
+
+            // B側のCanvasのカメラとRectTransformを取得
+            Camera targetCamera = GetCanvasCamera(targetCanvas);
+            RectTransform canvasRectTransform = targetCanvas.GetComponent<RectTransform>();
+
+            // ワールド座標をB側のCanvas座標系に変換
+            Vector2[] localCorners = new Vector2[4];
+            for (int i = 0; i < 4; i++)
+            {
+                Vector2 screenPoint = RectTransformUtility.WorldToScreenPoint(sourceCamera, worldCorners[i]);
+                Vector2 localPoint;
+                RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    canvasRectTransform,
+                    screenPoint,
+                    targetCamera,
+                    out localPoint
+                );
+                localCorners[i] = localPoint;
+            }
+
+            // 中心座標を計算
+            Vector2 center = (localCorners[0] + localCorners[2]) / 2f;
+
+            // サイズを計算
+            float width = Vector2.Distance(localCorners[0], localCorners[3]);
+            float height = Vector2.Distance(localCorners[0], localCorners[1]);
+
+            // アンカーを中央に設定
+            targetRectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+            targetRectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            targetRectTransform.pivot = new Vector2(0.5f, 0.5f);
+
+            // 位置とサイズを設定
+            targetRectTransform.anchoredPosition = center;
+            targetRectTransform.sizeDelta = new Vector2(width, height);
+        }
+
+        /// <summary>
+        /// Canvasに対応するカメラを取得
+        /// </summary>
+        private static Camera GetCanvasCamera(Canvas canvas)
+        {
+            if (canvas == null)
+                return null;
+
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+            else if (canvas.worldCamera != null)
+            {
+                return canvas.worldCamera;
+            }
+            else
+            {
+                return Camera.main;
+            }
+        }
+
+        #endregion
     }
 }
