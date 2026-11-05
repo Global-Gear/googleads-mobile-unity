@@ -20,6 +20,7 @@ import tempfile
 PACKAGE_NAME = "com.google.ads.mobile"
 SOURCE_ROOT = "source/plugin/Assets/"
 REPOSITORY_URL = "https://github.com/Global-Gear/googleads-mobile-unity"
+LEGACY_EDM_VERSION = "1.2.188"
 
 INCLUDE_PREFIXES = ("Assets/GoogleMobileAds", "Assets/Plugins")
 EXCLUDE_PATHS = (
@@ -102,6 +103,10 @@ def write_package_json(out_dir, revision):
     package["displayName"] += " (Custom)"
     package.pop("samples", None)
     package.pop("publishConfig", None)
+    # Firebase が旧 EDM に依存しているので、新しい EDM と併用しない
+    dependencies = package["dependencies"]
+    if dependencies.pop("com.unity.external-dependency-manager", None):
+        dependencies["com.google.external-dependency-manager"] = LEGACY_EDM_VERSION
     package["repository"] = {"type": "git", "url": REPOSITORY_URL, "revision": revision}
     with open(os.path.join(out_dir, "package.json"), "w", encoding="utf-8", newline="\n") as f:
         json.dump(package, f, ensure_ascii=False, indent=2)
