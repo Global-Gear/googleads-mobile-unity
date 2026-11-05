@@ -1,0 +1,109 @@
+#if UNITY_IOS
+// Copyright (C) 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
+using System.Runtime.InteropServices;
+using UnityEngine;
+
+using GoogleMobileAds.Api;
+using GoogleMobileAds.Common;
+using System.Linq;
+using System.Collections.Generic;
+
+namespace GoogleMobileAds.iOS
+{
+    public class RequestConfigurationClient
+
+    {
+        public static void SetRequestConfiguration(RequestConfiguration requestConfiguration)
+        {
+
+            if (requestConfiguration.MaxAdContentRating != null)
+            {
+                Externs.GADUSetRequestConfigurationMaxAdContentRating(requestConfiguration.MaxAdContentRating.Value);
+            }
+
+            if (requestConfiguration.TestDeviceIds.Count > 0)
+            {
+                string[] testDeviceIdsArray = new string[requestConfiguration.TestDeviceIds.Count];
+                requestConfiguration.TestDeviceIds.CopyTo(testDeviceIdsArray);
+                Externs.GADUSetRequestConfigurationTestDeviceIdentifiers(testDeviceIdsArray, requestConfiguration.TestDeviceIds.Count);
+            }
+#pragma warning disable 618
+            if (requestConfiguration.TagForChildDirectedTreatment.HasValue)
+            {
+                TagForChildDirectedTreatment? tagForChildDirectedTreatment = requestConfiguration.TagForChildDirectedTreatment;
+                Externs.GADUSetRequestConfigurationTagForChildDirectedTreatment((int)tagForChildDirectedTreatment.GetValueOrDefault());
+            }
+
+            if (requestConfiguration.TagForUnderAgeOfConsent.HasValue)
+            {
+                TagForUnderAgeOfConsent? TagForUnderAgeOfConsent = requestConfiguration.TagForUnderAgeOfConsent;
+                Externs.GADUSetRequestConfigurationTagForUnderAgeOfConsent((int)TagForUnderAgeOfConsent.GetValueOrDefault());
+            }
+#pragma warning restore 618
+
+            if (requestConfiguration.AgeRestrictedTreatment.HasValue)
+            {
+                AgeRestrictedTreatment? ageRestrictedTreatment = requestConfiguration.AgeRestrictedTreatment;
+                Externs.GADUSetRequestConfigurationAgeRestrictedTreatment((int)ageRestrictedTreatment.GetValueOrDefault());
+            }
+
+            if (requestConfiguration.PublisherFirstPartyIdEnabled.HasValue) {
+                Externs.GADUSetRequestConfigurationPublisherFirstPartyIDEnabled(
+                    requestConfiguration.PublisherFirstPartyIdEnabled.Value);
+            }
+
+            if (requestConfiguration.PublisherPrivacyPersonalizationState.HasValue)
+            {
+              Externs.GADUSetRequestConfigurationPublisherPrivacyPersonalizationState(
+                  (int)requestConfiguration.PublisherPrivacyPersonalizationState
+                      .GetValueOrDefault());
+            }
+
+        }
+
+        public static RequestConfiguration GetRequestConfiguration()
+        {
+            MaxAdContentRating maxAdContentRating = MaxAdContentRating.ToMaxAdContentRating(Externs.GADUGetMaxAdContentRating());
+            IntPtr testDeviceIdsArray = Externs.GADUGetTestDeviceIdentifiers();
+            List<string> testDeviceIds = Utils.PtrArrayToManagedList(testDeviceIdsArray, Externs.GADUGetTestDeviceIdentifiersCount());
+
+#pragma warning disable 618
+            TagForChildDirectedTreatment tagForChildDirectedTreatment = (TagForChildDirectedTreatment)Externs.GADUGetRequestConfigurationTagForChildDirectedTreatment();
+            TagForUnderAgeOfConsent tagForUnderAgeOfConsent = (TagForUnderAgeOfConsent)Externs.GADUGetRequestConfigurationTagForUnderAgeOfConsent();
+#pragma warning restore 618
+            AgeRestrictedTreatment ageRestrictedTreatment = (AgeRestrictedTreatment)Externs.GADUGetRequestConfigurationAgeRestrictedTreatment();
+            PublisherPrivacyPersonalizationState publisherPrivacyPersonalizationState =
+                (PublisherPrivacyPersonalizationState)Externs.GADUGetRequestConfigurationPublisherPrivacyPersonalizationState();
+
+            RequestConfiguration requestConfiguration = new RequestConfiguration()
+            {
+                MaxAdContentRating = maxAdContentRating,
+#pragma warning disable 618
+                TagForChildDirectedTreatment = tagForChildDirectedTreatment,
+                TagForUnderAgeOfConsent = tagForUnderAgeOfConsent,
+#pragma warning restore 618
+                AgeRestrictedTreatment = ageRestrictedTreatment,
+                TestDeviceIds = testDeviceIds,
+                PublisherPrivacyPersonalizationState = publisherPrivacyPersonalizationState
+            };
+            return requestConfiguration;
+        }
+
+    }
+
+}
+#endif

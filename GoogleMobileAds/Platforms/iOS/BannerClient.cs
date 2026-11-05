@@ -1,0 +1,540 @@
+#if UNITY_IOS
+// Copyright (C) 2015 Google, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
+using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
+using GoogleMobileAds.Api;
+using GoogleMobileAds.Common;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace GoogleMobileAds.iOS
+{
+    public class BannerClient : IBannerClient, IDisposable
+    {
+        private IntPtr bannerViewPtr;
+
+        private IntPtr bannerClientPtr;
+
+#region Banner callback types
+
+        internal delegate void GADUAdViewDidReceiveAdCallback(IntPtr bannerClient);
+
+        internal delegate void GADUAdViewDidFailToReceiveAdWithErrorCallback(
+                IntPtr bannerClient, IntPtr error);
+
+        internal delegate void GADUAdViewWillPresentScreenCallback(IntPtr bannerClient);
+
+        internal delegate void GADUAdViewDidDismissScreenCallback(IntPtr bannerClient);
+
+        internal delegate void GADUAdViewPaidEventCallback(
+            IntPtr bannerClient, int precision, long value, string currencyCode);
+
+        internal delegate void GADUAdViewImpressionCallback(IntPtr bannerClient);
+
+        internal delegate void GADUAdViewClickCallback(IntPtr bannerClient);
+
+        #endregion
+
+        public event Action OnAdLoaded;
+
+        public event Action<LoadAdErrorClientEventArgs> OnAdFailedToLoad;
+
+        public event Action OnAdOpening;
+
+        public event Action OnAdClosed;
+
+        public event Action<AdValue> OnPaidEvent;
+
+        public event Action OnAdClicked;
+
+        public event Action OnAdImpressionRecorded;
+
+        // This property should be used when setting the bannerViewPtr.
+        private IntPtr BannerViewPtr
+        {
+            get
+            {
+                return this.bannerViewPtr;
+            }
+
+            set
+            {
+                Externs.GADURelease(this.bannerViewPtr);
+                this.bannerViewPtr = value;
+            }
+        }
+
+#region IBannerClient implementation
+
+        // A long integer provided by the AdMob UI for the configured placement.
+        public long PlacementId
+        {
+            get
+            {
+                return Externs.GADUGetBannerViewPlacementID(this.BannerViewPtr);
+            }
+            set
+            {
+                Externs.GADUSetBannerViewPlacementID(this.BannerViewPtr, value);
+            }
+        }
+
+        // Creates a banner view.
+        public void CreateBannerView(string adUnitId, AdSize adSize, AdPosition position)
+        {
+            this.bannerClientPtr = (IntPtr)GCHandle.Alloc(this);
+
+            switch (adSize.AdType)
+            {
+                case AdSize.Type.SmartBanner:
+                    this.BannerViewPtr = Externs.GADUCreateSmartBannerView(
+                            this.bannerClientPtr, adUnitId, (int)position);
+                    break;
+                case AdSize.Type.AnchoredAdaptive:
+                    this.BannerViewPtr = Externs.GADUCreateAnchoredAdaptiveBannerView(
+                            this.bannerClientPtr,
+                            adUnitId,
+                            adSize.Width,
+                            (int)adSize.Orientation,
+                            (int)position);
+                    break;
+                case AdSize.Type.LargeAnchoredAdaptive:
+                    this.BannerViewPtr = Externs.GADUCreateLargeAnchoredAdaptiveBannerView(
+                            this.bannerClientPtr,
+                            adUnitId,
+                            adSize.Width,
+                            (int)adSize.Orientation,
+                            (int)position);
+                    break;
+                case AdSize.Type.Standard:
+                    this.BannerViewPtr = Externs.GADUCreateBannerView(
+                            this.bannerClientPtr, adUnitId, adSize.Width, adSize.Height, (int)position);
+                    break;
+                default:
+                    throw new ArgumentException("Invalid AdSize.Type provided.");
+            }
+
+            Externs.GADUSetBannerCallbacks(
+                this.BannerViewPtr,
+                AdViewDidReceiveAdCallback,
+                AdViewDidFailToReceiveAdWithErrorCallback,
+                AdViewWillPresentScreenCallback,
+                AdViewDidDismissScreenCallback,
+                AdViewPaidEventCallback,
+                AdViewImpressionRecordedCallback,
+                AdViewClickRecordedCallback
+                );
+        }
+
+        public void CreateBannerView(string adUnitId, AdSize adSize, int x, int y)
+        {
+
+            this.bannerClientPtr = (IntPtr)GCHandle.Alloc(this);
+
+            switch (adSize.AdType)
+            {
+                case AdSize.Type.SmartBanner:
+                    this.BannerViewPtr = Externs.GADUCreateSmartBannerViewWithCustomPosition(
+                    this.bannerClientPtr,
+                    adUnitId,
+                    x,
+                    y);
+                    break;
+                case AdSize.Type.AnchoredAdaptive:
+                    this.BannerViewPtr = Externs.GADUCreateAnchoredAdaptiveBannerViewWithCustomPosition(
+                        this.bannerClientPtr,
+                        adUnitId,
+                        adSize.Width,
+                        (int)adSize.Orientation,
+                        x,
+                        y);
+                    break;
+                case AdSize.Type.LargeAnchoredAdaptive:
+                    this.BannerViewPtr = Externs.GADUCreateLargeAnchoredAdaptiveBannerViewWithCustomPosition(
+                        this.bannerClientPtr,
+                        adUnitId,
+                        adSize.Width,
+                        (int)adSize.Orientation,
+                        x,
+                        y);
+                    break;
+                case AdSize.Type.Standard:
+                    this.BannerViewPtr = Externs.GADUCreateBannerViewWithCustomPosition(
+                        this.bannerClientPtr,
+                        adUnitId,
+                        adSize.Width,
+                        adSize.Height,
+                        x,
+                        y);
+                    break;
+                default:
+                    throw new ArgumentException("Invalid AdSize.Type provided.");
+            }
+
+            Externs.GADUSetBannerCallbacks(
+                this.BannerViewPtr,
+                AdViewDidReceiveAdCallback,
+                AdViewDidFailToReceiveAdWithErrorCallback,
+                AdViewWillPresentScreenCallback,
+                AdViewDidDismissScreenCallback,
+                AdViewPaidEventCallback,
+                AdViewImpressionRecordedCallback,
+                AdViewClickRecordedCallback
+                );
+        }
+
+        // Loads an ad.
+        public void LoadAd(AdRequest request)
+        {
+            IntPtr requestPtr = Utils.BuildAdRequest(request);
+            Externs.GADURequestBannerAd(this.BannerViewPtr, requestPtr);
+            Externs.GADURelease(requestPtr);
+        }
+
+        // Displays the banner view on the screen.
+        public void ShowBannerView()
+        {
+            Externs.GADUShowBannerView(this.BannerViewPtr);
+        }
+
+        // Hides the banner view from the screen.
+        public void HideBannerView()
+        {
+            Externs.GADUHideBannerView(this.BannerViewPtr);
+        }
+
+        // Destroys the banner view.
+        public void DestroyBannerView()
+        {
+            Externs.GADURemoveBannerView(this.BannerViewPtr);
+            this.BannerViewPtr = IntPtr.Zero;
+        }
+
+        /// Returns the ad unit ID.
+        public string GetAdUnitID()
+        {
+            return Externs.GADUGetBannerViewAdUnitID(this.BannerViewPtr);
+        }
+
+        // Returns the height of the BannerView in pixels.
+        public float GetHeightInPixels()
+        {
+            return Externs.GADUGetBannerViewHeightInPixels(this.BannerViewPtr);
+        }
+
+        // Returns the width of the BannerView in pixels.
+        public float GetWidthInPixels()
+        {
+            return Externs.GADUGetBannerViewWidthInPixels(this.BannerViewPtr);
+        }
+
+        // Set the position of the banner view using standard position.
+        public void SetPosition(AdPosition adPosition)
+        {
+            Externs.GADUSetBannerViewAdPosition(this.BannerViewPtr, (int)adPosition);
+        }
+
+        // Set the position of the banner view using custom position.
+        public void SetPosition(int x, int y)
+        {
+            Externs.GADUSetBannerViewCustomPosition(this.BannerViewPtr, x, y);
+        }
+
+        // Indicates whether the last loaded ad is a collapsible banner.
+        public bool IsCollapsible()
+        {
+            return Externs.GADUIsBannerViewCollapsible(this.BannerViewPtr);
+        }
+
+        public IResponseInfoClient GetResponseInfoClient()
+        {
+            return new ResponseInfoClient(ResponseInfoClientType.AdLoaded, this.BannerViewPtr);
+        }
+
+        public void Dispose()
+        {
+            this.DestroyBannerView();
+            ((GCHandle)this.bannerClientPtr).Free();
+        }
+
+        ~BannerClient()
+        {
+            this.Dispose();
+        }
+
+#endregion
+
+#region MREC用カスタム関数群
+
+        public void CreateBannerView(string adUnitId, RectTransform target)
+        {
+            this.bannerClientPtr = (IntPtr)GCHandle.Alloc(this);
+
+            this.BannerViewPtr = Externs.GADUCreateBannerView(
+                this.bannerClientPtr, adUnitId, AdSize.MediumRectangle.Width,
+                AdSize.MediumRectangle.Height, (int)0);
+
+            Externs.GADUSetBannerCallbacks(
+                this.BannerViewPtr,
+                AdViewDidReceiveAdCallback,
+                AdViewDidFailToReceiveAdWithErrorCallback,
+                AdViewWillPresentScreenCallback,
+                AdViewDidDismissScreenCallback,
+                AdViewPaidEventCallback,
+                AdViewImpressionRecordedCallback,
+                AdViewClickRecordedCallback
+            );
+
+            if (target != null)
+            {
+                CustomUpdatePosition(target);
+            }
+        }
+
+        public void CustomUpdatePosition(RectTransform target)
+        {
+            // target が null のまま変換すると幅 0 → スケール 0 で不可視になるためガードする
+            if (target == null)
+            {
+                Debug.LogError("CustomUpdatePosition: target RectTransform is null. Ignoring.");
+                return;
+            }
+            ConvertRectToViewCenter(target, out float x, out float y, out float width, out _);
+            CustomUpdatePosition(width, x, y);
+        }
+
+        // Update the position of the banner view using custom position and width.
+        public void CustomUpdatePosition(float width, float x, float y)
+        {
+            Externs.GADUCustomUpdatePosition(this.BannerViewPtr, width, x, y);
+        }
+
+        /// <summary>
+        /// RectTransformをiOS UIView座標系の中心座標とサイズに変換
+        /// </summary>
+        /// <param name="rectTrans">変換したいRectTransform</param>
+        /// <param name="centerX">中心のX座標（out）</param>
+        /// <param name="centerY">中心のY座標（out）</param>
+        /// <param name="width">幅（out）</param>
+        /// <param name="height">高さ（out）</param>
+        public static void ConvertRectToViewCenter(RectTransform rectTrans, out float centerX, out float centerY, out float width, out float height)
+        {
+            if (rectTrans == null)
+            {
+                Debug.LogError("RectTransformがnullです");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvasを取得
+            Canvas canvas = rectTrans.GetComponentInParent<Canvas>();
+            if (canvas == null)
+            {
+                Debug.LogError("Canvasが見つかりません");
+                centerX = 0;
+                centerY = 0;
+                width = 0;
+                height = 0;
+                return;
+            }
+
+            // Canvas解像度とScreen解像度の比率を計算
+            float canvasWidth = Screen.width;
+            float canvasHeight = Screen.height;
+            CanvasScaler canvasScaler = canvas.GetComponent<CanvasScaler>();
+            if (canvasScaler != null && canvasScaler.uiScaleMode == CanvasScaler.ScaleMode.ScaleWithScreenSize)
+            {
+                canvasWidth = canvasScaler.referenceResolution.x;
+                canvasHeight = canvasScaler.referenceResolution.y;
+            }
+            // float scaleX = canvasWidth / Screen.width;
+            // float scaleY = canvasHeight / Screen.height;
+            float scaleX = 1.0f;
+            float scaleY = 1.0f;
+
+            // Safe Areaのオフセットを取得
+            Rect safeArea = Screen.safeArea;
+            float safeAreaTopOffset = Screen.height - safeArea.yMax;
+
+            // ワールド座標での四隅を取得
+            Vector3[] worldCorners = new Vector3[4];
+            rectTrans.GetWorldCorners(worldCorners);
+
+            Vector2[] screenCorners = new Vector2[4];
+
+            // Overlay Canvasの場合は直接Screen座標を使用
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                // Overlayの場合、worldCornersは既にScreen座標
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = new Vector2(worldCorners[i].x, worldCorners[i].y);
+                }
+            }
+            else
+            {
+                // Camera/World Spaceの場合はカメラを使って変換
+                Camera camera = GetCanvasCamera(canvas);
+                for (int i = 0; i < 4; i++)
+                {
+                    screenCorners[i] = RectTransformUtility.WorldToScreenPoint(camera, worldCorners[i]);
+                }
+            }
+
+            // 最小・最大座標を取得
+            float minX = Mathf.Min(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float maxX = Mathf.Max(screenCorners[0].x, screenCorners[1].x, screenCorners[2].x, screenCorners[3].x);
+            float minY = Mathf.Min(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+            float maxY = Mathf.Max(screenCorners[0].y, screenCorners[1].y, screenCorners[2].y, screenCorners[3].y);
+
+            // サイズ
+            width = (maxX - minX);
+            height = (maxY - minY);
+
+            // Unity Screen座標での中心（左下原点）
+            float screenCenterX = (minX + maxX) / 2f;
+            float screenCenterY = (minY + maxY) / 2f;
+
+            // iOS UIView座標系に変換（左上原点、Y軸下向き）
+            centerX = screenCenterX;
+            // Safe Areaのtopオフセット分を引く
+            centerY = (Screen.height - screenCenterY);
+        }
+
+        /// <summary>
+        /// Canvasに対応するカメラを取得
+        /// </summary>
+        private static Camera GetCanvasCamera(Canvas canvas)
+        {
+            if (canvas == null)
+                return null;
+
+            if (canvas.renderMode == RenderMode.ScreenSpaceOverlay)
+            {
+                return null;
+            }
+            else if (canvas.worldCamera != null)
+            {
+                return canvas.worldCamera;
+            }
+            else
+            {
+                return Camera.main;
+            }
+        }
+
+#endregion
+
+#region Banner callback methods
+
+        [MonoPInvokeCallback(typeof(GADUAdViewDidReceiveAdCallback))]
+        private static void AdViewDidReceiveAdCallback(IntPtr bannerClient)
+        {
+            BannerClient client = IntPtrToBannerClient(bannerClient);
+            if (client.OnAdLoaded != null)
+            {
+                client.OnAdLoaded();
+            }
+        }
+
+        [MonoPInvokeCallback(typeof(GADUAdViewDidFailToReceiveAdWithErrorCallback))]
+        private static void AdViewDidFailToReceiveAdWithErrorCallback(
+                IntPtr bannerClient, IntPtr error)
+        {
+            BannerClient client = IntPtrToBannerClient(bannerClient);
+            if (client.OnAdFailedToLoad != null)
+            {
+                LoadAdErrorClientEventArgs args = new LoadAdErrorClientEventArgs()
+                {
+                    LoadAdErrorClient = new LoadAdErrorClient(error)
+                };
+                client.OnAdFailedToLoad(args);
+            }
+        }
+
+        [MonoPInvokeCallback(typeof(GADUAdViewWillPresentScreenCallback))]
+        private static void AdViewWillPresentScreenCallback(IntPtr bannerClient)
+        {
+            BannerClient client = IntPtrToBannerClient(bannerClient);
+            if (client.OnAdOpening != null)
+            {
+                client.OnAdOpening();
+            }
+        }
+
+        [MonoPInvokeCallback(typeof(GADUAdViewDidDismissScreenCallback))]
+        private static void AdViewDidDismissScreenCallback(IntPtr bannerClient)
+        {
+            BannerClient client = IntPtrToBannerClient(bannerClient);
+            if (client.OnAdClosed != null)
+            {
+                client.OnAdClosed();
+            }
+        }
+
+        [MonoPInvokeCallback(typeof(GADUAdViewPaidEventCallback))]
+        private static void AdViewPaidEventCallback(
+            IntPtr bannerClient, int precision, long value, string currencyCode)
+        {
+            BannerClient client = IntPtrToBannerClient(bannerClient);
+            if (client.OnPaidEvent != null)
+            {
+                AdValue adValue = new AdValue()
+                {
+                    Precision = (AdValue.PrecisionType)precision,
+                    Value = value,
+                    CurrencyCode = currencyCode
+                };
+                client.OnPaidEvent(adValue);
+            }
+        }
+
+
+        [MonoPInvokeCallback(typeof(GADUAdViewImpressionCallback))]
+        private static void AdViewImpressionRecordedCallback(IntPtr adClientRef)
+        {
+            BannerClient client = IntPtrToBannerClient(adClientRef);
+            if (client.OnAdImpressionRecorded != null)
+            {
+                client.OnAdImpressionRecorded();
+            }
+        }
+
+        [MonoPInvokeCallback(typeof(GADUAdViewClickCallback))]
+        private static void AdViewClickRecordedCallback(IntPtr adClientRef)
+        {
+            BannerClient client = IntPtrToBannerClient(adClientRef);
+            if (client.OnAdClicked != null)
+            {
+                client.OnAdClicked();
+            }
+        }
+
+        private static BannerClient IntPtrToBannerClient(IntPtr bannerClient)
+        {
+            GCHandle handle = (GCHandle)bannerClient;
+            return handle.Target as BannerClient;
+        }
+
+#endregion
+    }
+}
+#endif

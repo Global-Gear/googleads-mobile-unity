@@ -1,0 +1,372 @@
+// Copyright 2014 Google Inc. All Rights Reserved.
+
+#import "GADUBanner.h"
+
+#import <CoreGraphics/CoreGraphics.h>
+#import <UIKit/UIKit.h>
+
+#import "GADUPluginUtil.h"
+
+@interface GADUBanner () <GADBannerViewDelegate>
+
+/// Defines where the ad should be positioned on the screen with a GADAdPosition.
+@property(nonatomic, assign) GADAdPosition adPosition;
+
+/// Defines where the ad should be positioned on the screen with a CGPoint.
+@property(nonatomic, assign) CGPoint customAdPosition;
+
+@end
+
+@implementation GADUBanner {
+  // Keep a reference to the error objects so references to Unity-level
+  // ResponseInfo object are not released until the ad object is released.
+  NSError *_lastLoadError;
+
+  // 【追加】カスタム位置・スケール情報を保持するための変数
+  BOOL _isCustomScaled;      // カスタムスケールモードかどうか
+  CGFloat _storedScale;      // 保存されたスケール値
+  CGRect _storedBaseFrame;   // 保存されたTransform適用前のフレーム
+}
+
+- (id)initWithBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                           adUnitID:(NSString *)adUnitID
+                              width:(CGFloat)width
+                             height:(CGFloat)height
+                         adPosition:(GADAdPosition)adPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil adSizeForWidth:width height:height]
+                                  adPosition:adPosition];
+}
+
+- (id)initWithBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                           adUnitID:(NSString *)adUnitID
+                              width:(CGFloat)width
+                             height:(CGFloat)height
+                   customAdPosition:(CGPoint)customAdPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil adSizeForWidth:width height:height]
+                            customAdPosition:customAdPosition];
+}
+
+- (id)initWithSmartBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                             adUnitID:(NSString *)adUnitID
+                                           adPosition:(GADAdPosition)adPosition {
+  // Choose the correct Smart Banner constant according to orientation.
+  UIInterfaceOrientation currentOrientation =
+      [UIApplication sharedApplication].statusBarOrientation;
+  GADAdSize adSize;
+  if (UIInterfaceOrientationIsPortrait(currentOrientation)) {
+    adSize = kGADAdSizeSmartBannerPortrait;
+  } else {
+    adSize = kGADAdSizeSmartBannerLandscape;
+  }
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:adSize
+                                  adPosition:adPosition];
+}
+
+- (id)initWithSmartBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                             adUnitID:(NSString *)adUnitID
+                                     customAdPosition:(CGPoint)customAdPosition {
+  // Choose the correct Smart Banner constant according to orientation.
+  UIInterfaceOrientation currentOrientation =
+      [UIApplication sharedApplication].statusBarOrientation;
+  GADAdSize adSize;
+  if (UIInterfaceOrientationIsPortrait(currentOrientation)) {
+    adSize = kGADAdSizeSmartBannerPortrait;
+  } else {
+    adSize = kGADAdSizeSmartBannerLandscape;
+  }
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:adSize
+                            customAdPosition:customAdPosition];
+}
+
+- (id)initWithAdaptiveBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                                adUnitID:(NSString *)adUnitID
+                                                   width:(NSInteger)width
+                                             orientation:(GADUBannerOrientation)orientation
+                                              adPosition:(GADAdPosition)adPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil adaptiveAdSizeForWidth:(CGFloat)width
+                                                                        orientation:orientation]
+                                  adPosition:adPosition];
+}
+
+- (id)initWithAdaptiveBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                                adUnitID:(NSString *)adUnitID
+                                                   width:(NSInteger)width
+                                             orientation:(GADUBannerOrientation)orientation
+                                        customAdPosition:(CGPoint)customAdPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil adaptiveAdSizeForWidth:(CGFloat)width
+                                                                        orientation:orientation]
+                            customAdPosition:customAdPosition];
+}
+
+- (id)initWithLargeAdaptiveBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                                     adUnitID:(NSString *)adUnitID
+                                                        width:(NSInteger)width
+                                                  orientation:(GADUBannerOrientation)orientation
+                                                   adPosition:(GADAdPosition)adPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil largeAdaptiveAdSizeForWidth:(CGFloat)width
+                                                                            orientation:orientation]
+                                  adPosition:adPosition];
+}
+
+- (id)initWithLargeAdaptiveBannerSizeAndBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                                                     adUnitID:(NSString *)adUnitID
+                                                        width:(NSInteger)width
+                                                  orientation:(GADUBannerOrientation)orientation
+                                             customAdPosition:(CGPoint)customAdPosition {
+  return [self initWithBannerClientReference:bannerClient
+                                    adUnitID:adUnitID
+                                      adSize:[GADUPluginUtil largeAdaptiveAdSizeForWidth:(CGFloat)width
+                                                                            orientation:orientation]
+                            customAdPosition:customAdPosition];
+}
+
+- (id)initWithBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                           adUnitID:(NSString *)adUnitID
+                             adSize:(GADAdSize)size
+                         adPosition:(GADAdPosition)adPosition {
+  self = [super init];
+  if (self) {
+    _bannerClient = bannerClient;
+    _adPosition = adPosition;
+    _bannerView = [[GADBannerView alloc] initWithAdSize:[GADUPluginUtil safeAdSizeForAdSize:size]];
+    _bannerView.adUnitID = adUnitID;
+    _bannerView.delegate = self;
+    _bannerView.rootViewController = [GADUPluginUtil unityGLViewController];
+
+    [self addPaidEventHandler];
+  }
+  return self;
+}
+
+- (id)initWithBannerClientReference:(GADUTypeBannerClientRef *)bannerClient
+                           adUnitID:(NSString *)adUnitID
+                             adSize:(GADAdSize)size
+                   customAdPosition:(CGPoint)customAdPosition {
+  self = [super init];
+  if (self) {
+    _bannerClient = bannerClient;
+    _customAdPosition = customAdPosition;
+    _adPosition = kGADAdPositionCustom;
+    _bannerView = [[GADBannerView alloc] initWithAdSize:[GADUPluginUtil safeAdSizeForAdSize:size]];
+    _bannerView.adUnitID = adUnitID;
+    _bannerView.delegate = self;
+    _bannerView.rootViewController = [GADUPluginUtil unityGLViewController];
+
+    [self addPaidEventHandler];
+  }
+  return self;
+}
+
+- (void)dealloc {
+  _bannerView.delegate = nil;
+}
+
+- (void)addPaidEventHandler {
+  __weak GADUBanner *weakSelf = self;
+  _bannerView.paidEventHandler = ^void(GADAdValue *_Nonnull adValue) {
+    GADUBanner *strongSelf = weakSelf;
+    if (!strongSelf) {
+      return;
+    }
+    if (strongSelf.paidEventCallback) {
+      int64_t valueInMicros = [adValue.value decimalNumberByMultiplyingByPowerOf10:6].longLongValue;
+      strongSelf.paidEventCallback(
+          strongSelf.bannerClient, (int)adValue.precision, valueInMicros,
+          [adValue.currencyCode cStringUsingEncoding:NSUTF8StringEncoding]);
+    }
+  };
+}
+
+- (void)loadRequest:(GADRequest *)request {
+  if (!self.bannerView) {
+    NSLog(@"GoogleMobileAdsPlugin: BannerView is nil. Ignoring ad request.");
+    return;
+  }
+  [self.bannerView loadRequest:request];
+}
+
+- (void)hideBannerView {
+  if (!self.bannerView) {
+    NSLog(@"GoogleMobileAdsPlugin: BannerView is nil. Ignoring call to hideBannerView");
+    return;
+  }
+  self.bannerView.hidden = YES;
+}
+
+- (void)showBannerView {
+  if (!self.bannerView) {
+    NSLog(@"GoogleMobileAdsPlugin: BannerView is nil. Ignoring call to showBannerView");
+    return;
+  }
+  self.bannerView.hidden = NO;
+
+  // 【修正】表示時に位置とスケールを再適用する
+  [self positionBannerView];
+}
+
+- (void)removeBannerView {
+  if (!self.bannerView) {
+    NSLog(@"GoogleMobileAdsPlugin: BannerView is nil. Ignoring call to removeBannerView");
+    return;
+  }
+  [self.bannerView removeFromSuperview];
+}
+
+- (GADResponseInfo *)responseInfo {
+  return self.bannerView.responseInfo;
+}
+
+- (CGFloat)heightInPixels {
+  return CGRectGetHeight(CGRectStandardize(self.bannerView.frame)) * [UIScreen mainScreen].scale;
+}
+
+- (CGFloat)widthInPixels {
+  return CGRectGetWidth(CGRectStandardize(self.bannerView.frame)) * [UIScreen mainScreen].scale;
+}
+
+- (BOOL)isCollapsible {
+  return self.bannerView.isCollapsible;
+}
+
+- (int64_t)placementID {
+  return self.bannerView.placementID;
+}
+
+- (void)setPlacementID:(int64_t)placementID {
+  self.bannerView.placementID = placementID;
+}
+
+- (BOOL)isHidden {
+  return self.bannerView == nil || self.bannerView.hidden;
+}
+
+- (void)setCustomAdPosition:(CGPoint)customPosition {
+  _customAdPosition = customPosition;
+  _adPosition = kGADAdPositionCustom;
+
+  // 【追加】通常のSetPositionが呼ばれたら、カスタムスケールモードを解除する
+  _isCustomScaled = NO;
+
+  [self positionBannerView];
+}
+
+- (void)positionBannerView {
+  /// Align the bannerView in the Unity view bounds.
+  UIView *unityView = [GADUPluginUtil unityGLViewController].view;
+
+  // 【修正】カスタムスケールモードが有効なら、保存された設定を強制適用して終了する
+  if (_isCustomScaled) {
+    self.bannerView.transform = CGAffineTransformIdentity;
+    self.bannerView.frame = _storedBaseFrame;
+    self.bannerView.transform = CGAffineTransformMakeScale(_storedScale, _storedScale);
+    return;
+  }
+
+  if (self.adPosition != kGADAdPositionCustom) {
+    [GADUPluginUtil positionView:self.bannerView inParentView:unityView adPosition:self.adPosition];
+  } else {
+    [GADUPluginUtil positionView:self.bannerView
+                    inParentView:unityView
+                  customPosition:self.customAdPosition];
+  }
+}
+
+#pragma mark GADBannerViewDelegate implementation
+
+- (void)bannerViewDidReceiveAd:(GADBannerView *)bannerView {
+  // Remove existing banner view from superview.
+  [self.bannerView removeFromSuperview];
+
+  // Add the new banner view.
+  self.bannerView = bannerView;
+
+  /// Align the bannerView in the Unity view bounds.
+  UIView *unityView = [GADUPluginUtil unityGLViewController].view;
+
+  [self positionBannerView];
+
+  [unityView addSubview:self.bannerView];
+
+  if (self.adReceivedCallback) {
+    self.adReceivedCallback(self.bannerClient);
+  }
+}
+
+- (void)bannerView:(GADBannerView *)view didFailToReceiveAdWithError:(NSError *)error {
+  if (self.adFailedCallback) {
+    _lastLoadError = error;
+    self.adFailedCallback(self.bannerClient, (__bridge GADUTypeErrorRef)error);
+  }
+}
+
+- (void)bannerViewWillPresentScreen:(GADBannerView *)bannerView {
+  if (self.willPresentCallback) {
+    self.willPresentCallback(self.bannerClient);
+  }
+}
+
+- (void)bannerViewWillDismissScreen:(GADBannerView *)bannerView {
+  // Callback is not forwarded to Unity.
+}
+
+- (void)bannerViewDidDismissScreen:(GADBannerView *)bannerView {
+  if (self.didDismissCallback) {
+    self.didDismissCallback(self.bannerClient);
+  }
+}
+
+- (void)bannerViewDidRecordImpression:(nonnull GADBannerView *)bannerView {
+  if (self.adImpressionCallback) {
+    self.adImpressionCallback(self.bannerClient);
+  }
+}
+
+- (void)bannerViewDidRecordClick:(nonnull GADBannerView *)bannerView {
+  if (self.adClickedCallback) {
+    self.adClickedCallback(self.bannerClient);
+  }
+}
+
+- (void)customUpdatePosition:(CGFloat)width
+                    position:(CGPoint)position {
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ Before size. x: %f, y: %f, width: %f, height: %f",
+    self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
+
+  self.bannerView.transform = CGAffineTransformIdentity;
+
+  UIScreen *screen = UIScreen.mainScreen;
+  CGFloat screenScale = screen.scale;
+
+  // 拡大表示モード対策: nativeScale / scale でズーム倍率を取得
+  CGFloat zoomFactor = screen.nativeScale / screen.scale;
+
+  CGFloat x = (position.x / screenScale) / zoomFactor - (300 / 2);
+  CGFloat y = (position.y / screenScale) / zoomFactor - (250 / 2);
+  CGFloat scale = (width / screenScale) / zoomFactor / 300;
+
+  // 【重要】情報を保存し、フラグを立てる
+  _isCustomScaled = YES;
+  _storedScale = scale;
+  _storedBaseFrame = CGRectMake(x, y, 300, 250);
+
+  // 適用処理を実行 (positionBannerViewを呼ぶことで、上記で保存した変数が適用される)
+  [self positionBannerView];
+
+  NSLog(@"GoogleMobileAdsPlugin: Call customUpdatePosition() @ After size. x: %f, y: %f, width: %f, height: %f",
+  self.bannerView.frame.origin.x, self.bannerView.frame.origin.y, self.bannerView.frame.size.width, self.bannerView.frame.size.height);
+}
+@end

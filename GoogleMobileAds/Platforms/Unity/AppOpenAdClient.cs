@@ -1,0 +1,160 @@
+// Copyright (C) 2021 Google LLC.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+using System;
+using System.Collections.Generic;
+
+using UnityEngine;
+using UnityEngine.UI;
+
+using GoogleMobileAds.Api;
+using GoogleMobileAds.Common;
+
+namespace GoogleMobileAds.Unity
+{
+    public class AppOpenAdClient : BaseAdClient, IAppOpenAdClient
+    {
+        public event Action OnAdLoaded;
+
+        public event Action<LoadAdErrorClientEventArgs> OnAdFailedToLoad;
+
+        public event Action<AdValue> OnPaidEvent;
+
+        public event Action<AdErrorClientEventArgs> OnAdFailedToPresentFullScreenContent;
+
+        public event Action OnAdDidPresentFullScreenContent;
+
+        public event Action OnAdDidDismissFullScreenContent;
+
+        public event Action OnAdDidRecordImpression;
+
+        public event Action OnAdClicked;
+
+        public long PlacementId { get; set; }
+
+        private Dictionary<AdSize, string> prefabAds = new Dictionary<AdSize, string>() {
+            { new AdSize(768, 1024), "PlaceholderAds/AppOpen/768x1024" },
+            { new AdSize(1024, 768), "PlaceholderAds/AppOpen/1024x768" }
+        };
+
+        private ButtonBehaviour buttonBehaviour;
+
+        private void AddClickBehavior(GameObject dummy)
+        {
+            Image[] images = dummy.GetComponentsInChildren<Image>();
+            Image adImage = images[1];
+            Button button = adImage.GetComponentInChildren<Button>();
+            button.onClick.AddListener(() => {
+                if (OnAdClicked != null)
+                {
+                    OnAdClicked();
+                }
+                buttonBehaviour.OpenURL();
+            });
+
+            Button[] innerButtons = adImage.GetComponentsInChildren<Button>();
+
+            innerButtons[1].onClick.AddListener(() =>
+            {
+                DestroyAppOpenAd();
+                if(OnAdDidDismissFullScreenContent != null)
+                {
+                    OnAdDidDismissFullScreenContent.Invoke();
+                }
+                AdBehaviour.ResumeGame();
+            });
+        }
+
+        private void CreateButtonBehavior()
+        {
+            buttonBehaviour = base.dummyAd.AddComponent<ButtonBehaviour>();
+        }
+
+        public void CreateAppOpenAd()
+        {
+            // Do nothing.
+        }
+
+#if GMA_PREVIEW_FEATURES
+
+        public bool IsAdAvailable(string adUnitId)
+        {
+            Debug.Log("Preloaded ads are not supported on the Unity editor platform.");
+            return false;
+        }
+
+        public IAppOpenAdClient PollAd(string adUnitId)
+        {
+            Debug.Log("Preloaded ads are not supported on the Unity editor platform.");
+            return new AppOpenAdClient();
+        }
+
+#endif
+
+        public void LoadAd(string adUnitId, AdRequest request)
+        {
+            base._adUnitId = adUnitId;
+            LoadAndSetPrefabAd(prefabAds[new AdSize(768, 1024)]);
+            if (prefabAd != null)
+            {
+                if(OnAdLoaded != null)
+                {
+                    OnAdLoaded.Invoke();
+                }
+            }
+            else
+            {
+                if(OnAdFailedToLoad != null)
+                {
+                    OnAdFailedToLoad.Invoke(new LoadAdErrorClientEventArgs()
+                    {
+                        LoadAdErrorClient = new LoadAdErrorClient()
+                    });
+                }
+            }
+        }
+
+        public void Show()
+        {
+          if (prefabAd != null)
+          {
+              dummyAd = AdBehaviour.ShowAd(prefabAd, new Vector3(0, 0, 1));
+              AdBehaviour.PauseGame();
+
+              CreateButtonBehavior();
+              AddClickBehavior(dummyAd);
+
+              if(OnAdDidPresentFullScreenContent != null)
+              {
+                OnAdDidPresentFullScreenContent.Invoke();
+              }
+              if (OnAdDidRecordImpression != null)
+              {
+                  OnAdDidRecordImpression();
+              }
+          }
+          else
+          {
+              Debug.Log("No Ad Loaded");
+          }
+        }
+
+        public void DestroyAppOpenAd()
+        {
+            AdBehaviour.DestroyAd(dummyAd);
+            prefabAd = null;
+            base._adUnitId = null;
+        }
+    }
+}
