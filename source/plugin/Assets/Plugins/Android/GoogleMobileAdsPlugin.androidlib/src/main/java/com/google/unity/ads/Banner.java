@@ -665,6 +665,9 @@ public class Banner {
              mCustomCenterX = centerX;
              mCustomCenterY = centerY;
 
+             // 非表示の間も配置の基準を左上にしておく
+             adView.setLayoutParams(getLayoutParams());
+
              // 適用処理を実行
              applyCustomPositionInternal();
           }
@@ -679,8 +682,9 @@ public class Banner {
 
       adView.setScaleX(scale);
       adView.setScaleY(scale);
-      adView.setX(mCustomCenterX - (defaultWidth / 2));
-      adView.setY(mCustomCenterY - (defaultHeight / 2));
+      // setX / setY はレイアウト反映前の左端を基準に計算するので、基準の変更直後にズレる
+      adView.setTranslationX(mCustomCenterX - (defaultWidth / 2));
+      adView.setTranslationY(mCustomCenterY - (defaultHeight / 2));
 
       if (sMrecDummyView != null) {
         sMrecDummyView.setLayoutParams(new FrameLayout.LayoutParams(
