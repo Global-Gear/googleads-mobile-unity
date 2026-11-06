@@ -87,11 +87,30 @@ def clear_output(out_dir):
             os.remove(target)
 
 
-def write_meta(src, dst, rel_path):
+def read_existing_guids(out_dir):
+    guids = {}
+    for base, _, files in os.walk(out_dir):
+        if ".git" in base.split(os.sep):
+            continue
+        for name in files:
+            if not name.endswith(".meta"):
+                continue
+            path = os.path.join(base, name)
+            with open(path, encoding="utf-8") as f:
+                match = re.search(r"(?m)^guid: (\w+)", f.read())
+            if match:
+                rel_path = os.path.relpath(path, out_dir).replace(os.sep, "/")[:-len(".meta")]
+                guids[rel_path] = match.group(1)
+    return guids
+
+
+def write_meta(src, dst, rel_path, existing_guids):
     with open(src, encoding="utf-8", newline="") as f:
         text = f.read()
-    if rel_path in REGENERATE_GUID_FOLDERS:
-        text, count = re.subn(r"(?m)^guid: \w+", f"guid: {stable_guid(rel_path)}", text, 1)
+    # ソースに .meta が無いファイルは生成のたびに guid が変わるので、前の版を引き継ぐ
+    guid = stable_guid(rel_path) if rel_path in REGENERATE_GUID_FOLDERS else existing_guids.get(rel_path)
+    if guid:
+        text, count = re.subn(r"(?m)^guid: \w+", f"guid: {guid}", text, 1)
         if count != 1:
             sys.exit(f"guid が見つかりません: {src}")
     with open(dst, "w", encoding="utf-8", newline="") as f:
@@ -146,6 +165,7 @@ def main():
             tar.extractall(extracted)
         entries = read_entries(extracted)
 
+        existing_guids = read_existing_guids(args.out_dir)
         clear_output(args.out_dir)
         copied, stale = 0, []
         for path, entry in sorted(entries.items()):
@@ -167,7 +187,7 @@ def main():
                 os.makedirs(dst, exist_ok=True)
             meta = os.path.join(entry, "asset.meta")
             if os.path.exists(meta):
-                write_meta(meta, dst + ".meta", rel_path)
+                write_meta(meta, dst + ".meta", rel_path, existing_guids)
 
     version = write_package_json(args.out_dir, revision)
     write_root_files(args.out_dir)

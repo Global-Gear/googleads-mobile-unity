@@ -57,6 +57,7 @@
 
 - `Assets/GoogleMobileAds/Resources` と `Assets/Plugins/Android/AndroidManifest.xml` をパッケージに入れません。
 - `GoogleMobileAds`、`Plugins`、`Plugins/Android`、`Plugins/iOS`、`Plugins/Ump` のフォルダの guid を作り直します。アプリの `Assets` に同じ名前のフォルダが残るためです。
+- 出力先に同じファイルの `.meta` があれば、その guid を引き継ぎます。ソースに `.meta` が無いファイルは、生成のたびに guid が変わるためです。
 - `package.json` の `repository.revision` に、ソースのコミットを記録します。
 - `package.json` の依存の `com.unity.external-dependency-manager` を `com.google.external-dependency-manager` に置き換えます。Firebase が `com.google.external-dependency-manager` に依存しているためです。
 
